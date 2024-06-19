@@ -2,6 +2,7 @@ import glob
 import os
 import torch
 import numpy as np
+from torch import nn
 
 
 def classify_ivd(classificationNet, ivds, device):
@@ -135,9 +136,14 @@ def format_volume_for_classification_net(ivd_volume):
 
 
 def classify_ivd_v2_resnet(classificationNet, ivds, device):
+    softmax = nn.Softmax(dim=0)
+
     pred_pf = torch.Tensor().to(device).long()
     pred_nar = torch.Tensor().to(device).long()
-    pred_ccs = torch.Tensor().to(device).long()
+    pred_ccs1 = torch.Tensor().to(device).long()
+    pred_ccs2 = torch.Tensor().to(device).long()
+    pred_ccs3 = torch.Tensor().to(device).long()
+    pred_ccs4 = torch.Tensor().to(device).long()
     pred_spon = torch.Tensor().to(device).long()
     pred_ued = torch.Tensor().to(device).long()
     pred_led = torch.Tensor().to(device).long()
@@ -155,18 +161,25 @@ def classify_ivd_v2_resnet(classificationNet, ivds, device):
             # accumulate prediction and labels
             _, predicted_pf = net_output[0].squeeze().max(0)
             _, predicted_nar = net_output[1].squeeze().max(0)
-            _, predicted_ccs = net_output[2].squeeze().max(0)
+            # central canal stenosis, has 4 classes
+            # Ranges from 1 (no compression), 2 (mild compression), 3 (moderate compression) and 4 (severe compression)
+            # we need the probability of each type
+            # _, predicted_ccs = softmax(net_output[2].squeeze())
+            predicted_ccs_1, predicted_ccs_2, predicted_ccs_3, predicted_ccs_4, = softmax(net_output[2].squeeze())
             _, predicted_spon = net_output[3].squeeze().max(0)
             _, predicted_ued = net_output[4].squeeze().max(0)
             _, predicted_led = net_output[5].squeeze().max(0)
             _, predicted_umc = net_output[6].squeeze().max(0)
             _, predicted_lmc = net_output[7].squeeze().max(0)
-            _, predicted_fsl = net_output[8].squeeze().max(0)
-            _, predicted_fsr = net_output[9].squeeze().max(0)
+            _, predicted_fsl = softmax(net_output[8].squeeze())
+            _, predicted_fsr = softmax(net_output[9].squeeze())
             _, predicted_hrn = net_output[10].squeeze().max(0)
             pred_pf = torch.cat((pred_pf, predicted_pf[None]), 0)
             pred_nar = torch.cat((pred_nar, predicted_nar[None]), 0)
-            pred_ccs = torch.cat((pred_ccs, predicted_ccs[None]), 0)
+            pred_ccs1 = torch.cat((pred_ccs1, predicted_ccs_1[None]), 0)
+            pred_ccs2 = torch.cat((pred_ccs2, predicted_ccs_2[None]), 0)
+            pred_ccs3 = torch.cat((pred_ccs3, predicted_ccs_3[None]), 0)
+            pred_ccs4 = torch.cat((pred_ccs4, predicted_ccs_4[None]), 0)
             pred_spon = torch.cat((pred_spon, predicted_spon[None]), 0)
             pred_ued = torch.cat((pred_ued, predicted_ued[None]), 0)
             pred_led = torch.cat((pred_led, predicted_led[None]), 0)
@@ -179,7 +192,10 @@ def classify_ivd_v2_resnet(classificationNet, ivds, device):
 
     pred_pf = pred_pf.cpu().numpy()
     pred_nar = pred_nar.cpu().numpy()
-    pred_ccs = pred_ccs.cpu().numpy()
+    pred_ccs1 = pred_ccs1.cpu().numpy()
+    pred_ccs2 = pred_ccs2.cpu().numpy()
+    pred_ccs3 = pred_ccs3.cpu().numpy()
+    pred_ccs4 = pred_ccs4.cpu().numpy()
     pred_spon = pred_spon.cpu().numpy()
     pred_ued = pred_ued.cpu().numpy()
     pred_led = pred_led.cpu().numpy()
@@ -192,7 +208,10 @@ def classify_ivd_v2_resnet(classificationNet, ivds, device):
     gradings = {}
     gradings["Pfirrmann"] = pred_pf
     gradings["Narrowing"] = pred_nar
-    gradings["CentralCanalStenosis"] = pred_ccs
+    gradings["CentralCanalStenosis1"] = pred_ccs1
+    gradings["CentralCanalStenosis2"] = pred_ccs2
+    gradings["CentralCanalStenosis3"] = pred_ccs3
+    gradings["CentralCanalStenosis4"] = pred_ccs4
     gradings["Spondylolisthesis"] = pred_spon
     gradings["UpperEndplateDefect"] = pred_ued
     gradings["LowerEndplateDefect"] = pred_led
