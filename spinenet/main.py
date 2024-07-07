@@ -154,7 +154,7 @@ class SpineNet:
             centroid_threshold=self.centroid_threshold,
             group_across_slices_threshold=self.group_across_slices_threshold,
             remove_single_slice_detections=remove_single_slice_detections,
-            pixel_spacing=pixel_spacing,
+            pixel_spacing=pixel_spacing if isinstance(pixel_spacing,float) else np.mean(pixel_spacing),
             device=self.device,
             debug=debug,
         )
@@ -167,7 +167,7 @@ class SpineNet:
         labels_ans = label_verts(
             vert_dicts,
             volume,
-            pixel_spacing,
+            pixel_spacing if isinstance(pixel_spacing,float) else np.mean(pixel_spacing),
             self.appearance_model,
             self.context_model,
             plot_outputs=False,
